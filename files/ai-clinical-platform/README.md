@@ -46,7 +46,21 @@ npm start
 
 ### 選項 A：Render（最簡單，適合非工程背景）
 
-1. 把整個資料夾上傳到一個 GitHub repo（`.env` 已被 `.gitignore` 排除，不會外洩金鑰）。
+1. 把專案放到一個 GitHub repo。GitHub 網頁那個「choose your files」按鈕只能選單檔，所以**用拖曳的方式**上傳整個資料夾。任選一種：
+
+   **方法一：網頁拖放（最快）**
+   - 先把下載的 zip 解壓縮，得到 `ai-clinical-platform` 資料夾。
+   - 在 GitHub 點右上角 **＋ → New repository**，取個名字後建立。
+   - 進到該 repo 頁面，點 **Add file → Upload files**。
+   - 打開電腦的檔案總管，把 `ai-clinical-platform` 資料夾**裡面的所有檔案與子資料夾**（`server.js`、`package.json`、`public`、`README.md` 等）全部選起來，直接**拖曳**到網頁中央的上傳區。GitHub 會自動保留 `public/` 等子資料夾的結構。
+   - 拉到最下面點 **Commit changes** 完成。
+   - 小提醒：請把資料夾「裡面的內容」拖上去，讓 `package.json` 位在 repo 的最上層（這樣 Render 才找得到）。若你是把整個 `ai-clinical-platform` 資料夾拖上去、變成 repo 裡的子資料夾，等下在 Render 要把 **Root Directory** 設成 `ai-clinical-platform`。
+
+   **方法二：GitHub Desktop（日後要更新比較方便）**
+   - 安裝 GitHub Desktop → **File → Add local repository**，選解壓後的資料夾（或先 New repository 再把檔案放進去）。
+   - 按 **Commit**，再按 **Publish repository** 即可整包推上 GitHub，之後改東西也只要 Commit + Push。
+
+   安全提醒：本專案內**沒有** `.env`（金鑰是之後直接填到 Render 的環境變數，不放進 repo），所以不會外洩；請不要自行建立 `.env` 後又把它拖上去。
 2. 到 https://render.com 註冊，點 **New → Web Service**，連到該 repo。
 3. 設定：
    - **Build Command**：`npm install`

@@ -124,7 +124,8 @@ app.post("/api/ai", rateLimit, async (req, res) => {
 
 /* ---------- 教師登入與標準答案 ---------- */
 app.post("/api/teacher/login", (req, res) => {
-  if ((req.body && req.body.passcode) === TEACHER_PASSCODE) {
+  const input = String((req.body && req.body.passcode) || "").trim();
+  if (input && input === String(TEACHER_PASSCODE).trim()) {
     res.json({ token: newToken() });
   } else {
     res.status(401).json({ error: "bad_passcode" });

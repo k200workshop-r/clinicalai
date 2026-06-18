@@ -447,9 +447,13 @@ function recordReportHTML(r,includeTeacher){
   ${includeTeacher?`<h3 style="color:#dd4f37;margin-top:16px">教師參考答案（僅教師留存）</h3>${[1,2,3,4].map(i=>`<div style="font-size:13px;margin-top:6px"><b>Session ${i}</b><div style="white-space:pre-wrap">${esc(state.teacherAnswers[i]||"—")}</div></div>`).join("")}`:""}`;
 }
 function buildAndSave(html,filename){
-  $("report").innerHTML=html;
-  const opt={margin:[12,12,16,12],filename,image:{type:"jpeg",quality:.96},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}};
-  return html2pdf().set(opt).from($("report")).save();
+  // 必須在畫面內（非 left:-9999px）html2canvas 才抓得到內容，否則 PDF 會空白
+  const el=document.createElement("div");
+  el.style.cssText="position:absolute;left:0;top:0;z-index:99999;width:760px;background:#fff;color:#15282a;padding:40px;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;";
+  el.innerHTML=html;
+  document.body.appendChild(el);
+  const opt={margin:[12,12,16,12],filename,image:{type:"jpeg",quality:.96},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}};
+  return html2pdf().set(opt).from(el).save().then(()=>el.remove()).catch((e)=>{el.remove();throw e;});
 }
 function downloadOne(){
   const r={group:state.group,finishedAt:now(),caseRecord:state.caseRecord,answers:state.answers,s4:state.s4,lifeLeft:state.lifePoints};
