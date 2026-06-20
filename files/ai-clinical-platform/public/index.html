@@ -109,7 +109,7 @@
 <script>
 /* ============================ config ============================ */
 const ANSWER_SECONDS = 240, FEEDBACK_SECONDS = 180;
-const BUILD = "2026-06-19b";
+const BUILD = "2026-06-19c";
 const CASE_BASE =
 `55 歲男性，B 型肝炎帶原，未規則接受追蹤。
 主訴：被家人、同事發現「皮膚變黃」已 7 天。
@@ -131,9 +131,12 @@ async function getJSON(url, auth){
 }
 async function callClaude(system, user){
   const r = await postJSON("/api/ai",{system,user});
-  if(!r.ok) throw new Error("ai "+r.status);
-  const d = await r.json();
-  if(!d.text) throw new Error("empty");
+  let d=null; try{ d=await r.json(); }catch(e){}
+  if(!r.ok){
+    const msg=(d&&(d.detail||d.message||d.reason||d.error))||("HTTP "+r.status);
+    throw new Error(typeof msg==="string"?msg:JSON.stringify(msg));
+  }
+  if(!d||!d.text) throw new Error("AI 回傳空白");
   return d.text;
 }
 const SYS =
@@ -340,7 +343,7 @@ async function useAI(){
   if(s===2) prompt=ctx+"任務：提供 3 個最關鍵的「理學檢查」建議（含理由），並列出可能的鑑別診斷「方向」與推理理由。請勿斷定最終診斷。";
   if(s===3) prompt=ctx+"任務：協助小組思考此個案在『影像學檢查』與『抽血檢查』上的價值。請說明：安排影像學檢查能釐清哪些臨床問題、影像檢查在此情境的一般益處與考量面向；以及抽血檢查可協助評估哪些方向與其益處。請以『考量面向與理由』方式呈現，務必不要寫出或指定任何具體的影像項目名稱（例如不要寫出超音波、CT、MRI 等任何具名檢查），把選擇權留給學員；也不要提供最終診斷。";
   try{ const out=await callClaude(SYS,prompt); state.aiOutputs[s]=out; $("aiBox").innerHTML=aiPanel(out); }
-  catch(e){ $("aiBox").innerHTML=aiPanel("AI 服務目前無法連線。請確認伺服器已設定 GEMINI_API_KEY，或稍後再試。"); }
+  catch(e){ $("aiBox").innerHTML=aiPanel("AI 暫時無法取得建議。\n錯誤訊息："+String((e&&e.message)||e)+"\n\n（若出現 API key not valid，請到 Render 檢查 GEMINI_API_KEY 是否正確、結尾沒有多餘空白或換行）"); }
   finally{ const b=$("aiBtn"); if(b) b.innerHTML="&#10084; 使用 AI 建議（本 Session 已使用）"; }
 }
 async function submitSession(){
@@ -452,19 +455,24 @@ function recordReportHTML(r,includeTeacher){
   ${[1,2,3,4].map(i=>`<div style="margin-top:8px;font-size:13px"><b>Session ${i}</b><div style="white-space:pre-wrap">${esc((s4.aiDx&&s4.aiDx[i])||"—")}</div></div>`).join("")}
   ${includeTeacher?`<h3 style="color:#dd4f37;margin-top:16px">教師參考答案（僅教師留存）</h3>${[1,2,3,4].map(i=>`<div style="font-size:13px;margin-top:6px"><b>Session ${i}</b><div style="white-space:pre-wrap">${esc(state.teacherAnswers[i]||"—")}</div></div>`).join("")}`:""}`;
 }
-// 以「列印視窗」產生 PDF：開新分頁、寫入報表、自動跳出列印對話框，
-// 使用者選「另存為 PDF / Save as PDF」即可存檔。中文穩定、不會空白。
+// 開新視窗顯示完整報表，並提供「列印 / 另存 PDF」按鈕。
+// 不自動列印（自動列印有時在內容畫好前觸發會變空白），改由使用者按鈕觸發，內容必定可見。
 function openPrintReport(inner,title){
   const w=window.open("","_blank");
-  if(!w){ alert("請允許本網站的彈出視窗，才能開啟列印／另存 PDF 的視窗。"); return; }
+  if(!w){ alert("請允許本網站的彈出視窗，才能開啟報表視窗。"); return; }
+  w.document.open();
   w.document.write(
     '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><title>'+title+'</title>'+
     '<style>'+
-      'body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;color:#15282a;margin:0;padding:28px;line-height:1.6;}'+
+      'body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;color:#15282a;margin:0;padding:24px;line-height:1.6;}'+
       'h1{font-size:20px;color:#0d3b3f;margin:.2em 0;} h3{color:#155b60;margin:1em 0 .4em;}'+
-      '@page{margin:16mm;}'+
-    '</style></head><body>'+inner+
-    '<scr'+'ipt>window.onload=function(){setTimeout(function(){window.focus();window.print();},350);};<\/scr'+'ipt>'+
+      '#bar{position:sticky;top:0;background:#0d3b3f;color:#fff;padding:10px 14px;margin:-24px -24px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;}'+
+      '#bar button{background:#dd4f37;color:#fff;border:0;border-radius:8px;padding:8px 16px;font-size:15px;cursor:pointer;font-family:inherit;}'+
+      '@media print{#bar{display:none;} @page{margin:16mm;}}'+
+    '</style></head><body>'+
+      '<div id="bar"><span>報表已產生。點右側按鈕，於印表機選「另存為 PDF / Save as PDF」即可存檔。</span>'+
+      '<button onclick="window.print()">列印 / 另存 PDF</button></div>'+
+      inner+
     '</body></html>'
   );
   w.document.close();

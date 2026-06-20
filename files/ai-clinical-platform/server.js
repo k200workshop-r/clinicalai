@@ -12,10 +12,10 @@ const crypto = require("crypto");
 const store = require("./lib/store");
 
 const PORT = process.env.PORT || 3000;
-const API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const API_KEY = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+const MODEL = (process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
 const TEACHER_PASSCODE = process.env.TEACHER_PASSCODE || "teacher2024";
-const BUILD = "2026-06-19b";
+const BUILD = "2026-06-19c";
 
 /* ---------- 教師 token（記憶體，8 小時效期）---------- */
 const tokens = new Map();
