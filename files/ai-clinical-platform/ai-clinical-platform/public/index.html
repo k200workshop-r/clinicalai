@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 臨床推理模擬訓練平台</title>
+<style>
+  :root{
+    --ink:#0d3b3f;--ink-2:#155b60;--paper:#f4f1e8;--card:#fffdf8;
+    --line:#d8d2c2;--line-2:#e7e2d4;--vital:#dd4f37;--vital-soft:#f0b3a6;
+    --slate:#5d6b6b;--slate-2:#869191;--good:#2f7d62;
+    --shadow:0 1px 0 rgba(13,59,63,.04),0 8px 24px -16px rgba(13,59,63,.4);
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --cjk:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:repeating-linear-gradient(transparent,transparent 31px,rgba(13,59,63,.05) 32px),var(--paper);
+    color:var(--ink);font-family:var(--cjk);line-height:1.6;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum"}
+  .wrap{max-width:880px;margin:0 auto;padding:0 18px 80px}
+  header.bar{position:sticky;top:0;z-index:30;background:var(--ink);color:#eef4f2;border-bottom:2px solid var(--vital)}
+  .bar-inner{max-width:880px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .brand{display:flex;align-items:baseline;gap:9px;font-weight:700;letter-spacing:.02em}
+  .brand .pulse{color:var(--vital);font-family:var(--mono);font-size:13px}
+  .brand small{font-weight:500;color:#9fc0bd;font-size:11px;letter-spacing:.16em}
+  .bar-spacer{flex:1}
+  .stat{display:flex;align-items:center;gap:6px;font-size:12px;color:#bcd4d1}
+  .stat b{color:#fff;font-family:var(--mono);font-size:13px}
+  .pips{display:flex;gap:3px;font-size:15px;line-height:1}
+  .pips .heart{color:var(--vital)} .pips .heart.spent{color:#3a5a5d}
+  .clock{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.06)}
+  .clock.urgent{background:var(--vital);color:#fff;animation:flash 1s steps(2) infinite}
+  @keyframes flash{50%{opacity:.55}}
+  .modelink{color:#9fc0bd;font-size:12px;text-decoration:none;border-bottom:1px dotted #57787a;cursor:pointer;background:none;border:none;font-family:var(--cjk)}
+  .modelink:hover{color:#fff}
+  h1,h2,h3{font-weight:700;letter-spacing:.01em;margin:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--vital);margin-bottom:6px}
+  .muted{color:var(--slate)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow);margin:18px 0}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  label.fld{display:block;margin:14px 0 0}
+  label.fld .lab{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+  input[type=text],textarea{width:100%;font-family:var(--cjk);font-size:15px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:10px 12px}
+  input[type=text]:focus,textarea:focus{outline:none;border-color:var(--ink-2);box-shadow:0 0 0 3px rgba(21,91,96,.12)}
+  textarea{resize:vertical;min-height:80px;line-height:1.55}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:var(--cjk);font-size:15px;font-weight:600;cursor:pointer;border:none;border-radius:10px;padding:12px 20px;transition:.15s transform,.15s background}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--ink);color:#fff} .btn-primary:hover{background:var(--ink-2)}
+  .btn-vital{background:var(--vital);color:#fff} .btn-vital:hover{background:#c8472f}
+  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)} .btn-ghost:hover{border-color:var(--ink-2)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btn-sm{padding:8px 14px;font-size:13px}
+  .board{position:relative;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:30px 30px 28px;margin:40px 0 22px;box-shadow:var(--shadow)}
+  .board:before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:repeating-linear-gradient(var(--vital),var(--vital) 14px,transparent 14px,transparent 24px)}
+  .board .pin{position:absolute;top:-11px;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;background:var(--vital);box-shadow:0 3px 6px rgba(0,0,0,.25);border:3px solid #fff}
+  .board h2{font-size:22px;margin-bottom:4px}
+  .board .stamp{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--slate-2);text-transform:uppercase}
+  .rules{margin:18px 0 0;padding:0;list-style:none}
+  .rules li{position:relative;padding:9px 0 9px 30px;border-top:1px dashed var(--line-2);font-size:15px}
+  .rules li:first-child{border-top:none}
+  .rules li .n{position:absolute;left:0;top:9px;font-family:var(--mono);font-weight:700;color:var(--vital)}
+  .rules b{color:var(--ink)}
+  .chart-head{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+  .chart-head .dot{width:8px;height:8px;border-radius:50%;background:var(--vital)}
+  .timeline{margin:10px 0 0;padding:0 0 0 4px;list-style:none}
+  .entry{position:relative;padding:0 0 18px 22px;border-left:2px solid var(--line)}
+  .entry:last-child{border-left-color:transparent}
+  .entry:before{content:"";position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--ink-2)}
+  .entry.seed:before{background:var(--vital);border-color:var(--vital)}
+  .entry .ts{font-family:var(--mono);font-size:11px;color:var(--slate-2);letter-spacing:.06em}
+  .entry .ti{font-weight:700;color:var(--ink);font-size:14px;margin:1px 0 3px}
+  .entry .bd{font-size:14px;color:#314547;white-space:pre-wrap}
+  .aibox{margin-top:16px;border:1px solid var(--ink-2);border-radius:12px;overflow:hidden}
+  .aibox .ah{background:var(--ink);color:#dff0ee;padding:8px 14px;font-size:12px;letter-spacing:.14em;font-family:var(--mono);display:flex;align-items:center;gap:8px}
+  .aibox .ah .led{width:7px;height:7px;border-radius:50%;background:var(--vital);box-shadow:0 0 8px var(--vital)}
+  .aibox .ab{padding:14px 16px;font-size:14.5px;white-space:pre-wrap;background:#fbfcfb;color:#1f3436}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #5b8c8c;border-top-color:var(--vital);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--vital);border:1px solid var(--vital-soft);border-radius:999px;padding:2px 10px}
+  .note{font-size:13px;color:var(--slate);background:#efece2;border-radius:8px;padding:10px 12px;margin-top:14px}
+  .step{display:flex;gap:10px;margin:14px 0}
+  .step .sn{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--mono);font-size:13px;display:flex;align-items:center;justify-content:center}
+  .step .sx{font-size:14px}
+  .divline{height:1px;background:var(--line-2);margin:20px 0}
+  .right{text-align:right} .center{text-align:center}
+  .err{color:var(--vital);font-size:13px;margin-top:8px}
+  .recitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line-2)}
+  .recitem:first-child{border-top:none}
+  .recitem .nm{font-weight:600} .recitem .meta{font-family:var(--mono);font-size:11px;color:var(--slate-2)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .tab{font-family:var(--mono);font-size:12px;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--slate)}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  #printArea{display:none}
+  #printArea .print-doc{font-family:var(--cjk);color:#15282a;line-height:1.6}
+  @media print{
+    body{background:#fff !important}
+    body > *:not(#printArea){display:none !important}
+    #printArea{display:block !important}
+    @page{margin:16mm}
+  }
+  @media(max-width:560px){.bar-inner{gap:9px}.stat.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand"><span class="pulse">/\/\</span>AI 臨床推理訓練<small>SIM&nbsp;WARD</small></div>
+    <div class="bar-spacer"></div>
+    <div id="barStats"></div>
+    <button class="modelink" id="modeBtn" onclick="toggleMode()">教師後台</button>
+  </div>
+</header>
+<div class="wrap" id="app"></div>
+<div id="printArea"></div>
+
+<script>
+/* ============================ config ============================ */
+const ANSWER_SECONDS = 240, FEEDBACK_SECONDS = 180;
+const BUILD = "2026-06-19p";
+const CASE_BASE =
+`55 歲男性，B 型肝炎帶原，未規則接受追蹤。
+主訴：被家人、同事發現「皮膚變黃」已 7 天。
+過去病史：糖尿病。`;
+
+/* ============================ networking ============================ */
+let teacherToken = localStorage.getItem("tt") || "";
+async function postJSON(url, body, auth){
+  const headers = {"content-type":"application/json"};
+  if(auth && teacherToken) headers.authorization = "Bearer "+teacherToken;
+  const r = await fetch(url,{method:"POST",headers,body:JSON.stringify(body||{})});
+  return r;
+}
+async function getJSON(url, auth){
+  const headers = {};
+  if(auth && teacherToken) headers.authorization = "Bearer "+teacherToken;
+  const r = await fetch(url,{headers});
+  return r;
+}
+async function callClaude(system, user){
+  const r = await postJSON("/api/ai",{system,user});
+  let d=null; try{ d=await r.json(); }catch(e){}
+  if(!r.ok){
+    const msg=(d&&(d.detail||d.message||d.reason||d.error))||("HTTP "+r.status);
+    throw new Error(typeof msg==="string"?msg:JSON.stringify(msg));
+  }
+  if(!d||!d.text) throw new Error("AI 回傳空白");
+  return d.text;
+}
+// 失敗自動重試（指數退避 + 抖動）；RPM 的 429 通常幾十秒內就會恢復
+async function callWithRetry(system,user,tries){
+  tries=tries||4;
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  let lastErr;
+  for(let i=0;i<tries;i++){
+    try{ return await callClaude(system,user); }
+    catch(e){ lastErr=e; if(i<tries-1) await sleep(Math.min(1500*Math.pow(2,i),12000)+Math.random()*800); }
+  }
+  throw lastErr;
+}
+const SYS =
+`你是臨床醫學教育輔助 AI，協助住院醫師在「模擬教學情境」中訓練臨床推理。`+
+`這是虛構的教學個案、並非真實病人，輸出僅供醫學教育使用。`+
+`請務必以繁體中文、條列且精簡地回答。`+
+`重要原則：在第一到第三階段，你只能提供「建議與推理理由」，不可直接說出最終診斷或標準答案（最終答案由現場教師提供）。`;
+
+/* ============================ state ============================ */
+const state = {
+  view:"announcement", group:"", depts:[], session:1, phase:"answer",
+  lifePoints:3, caseRecord:[],
+  answers:{1:null,2:null,3:null,4:null},
+  aiOutputs:{1:"",2:"",3:""}, aiUsedThisSession:{1:false,2:false,3:false},
+  s4:{dx:"",plan:"",aiAll:""},
+  teacherAnswers:{1:"",2:"",3:"",4:""}, teacherAuthed:false, teacherTab:1,
+};
+let allRecords = [];
+let timer=null, remain=0;
+
+/* ============================ helpers ============================ */
+const $ = id => document.getElementById(id);
+const esc = s => (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const now = () => { const d=new Date(),p=n=>String(n).padStart(2,"0"); return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const fmt = s => { const m=Math.floor(s/60),x=s%60; return `${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`; };
+function caseText(){ return state.caseRecord.map(e=>`【${e.title}】\n${e.body}`).join("\n\n"); }
+function addRecord(title,body,seed=false){ state.caseRecord.push({ts:now(),title,body,seed:!!seed}); }
+
+/* ============================ render ============================ */
+function renderBar(){
+  const inSession = state.view==="session";
+  let html = "";
+  if(state.group) html += `<span class="stat hide-sm">組別&nbsp;<b>${esc(state.group)}</b></span>`;
+  html += `<span class="stat">生命點數 <span class="pips">${[0,1,2].map(i=>`<span class="heart ${i<state.lifePoints?"":"spent"}">&#10084;</span>`).join("")}</span></span>`;
+  if(inSession){
+    const cls=(state.phase==="answer"&&remain<=60)?"clock urgent":"clock";
+    html += `<span class="${cls}" id="clock">${fmt(remain)}</span>`;
+  }
+  $("barStats").innerHTML = html;
+  $("modeBtn").textContent = (state.view==="teacher"||state.view==="teacherLogin") ? "返回學員模式" : "教師後台";
+}
+function render(){
+  renderBar();
+  const v=state.view;
+  if(v==="announcement") return renderAnnouncement();
+  if(v==="group")        return renderGroup();
+  if(v==="session")      return renderSession();
+  if(v==="summary")      return renderSummary();
+  if(v==="teacherLogin") return renderTeacherLogin();
+  if(v==="teacher")      return renderTeacher();
+}
+function renderAnnouncement(){
+  $("app").innerHTML = `
+  <div class="board">
+    <span class="pin"></span>
+    <div class="stamp">// 訓練前公告 · BRIEFING · 版本 ${BUILD}</div>
+    <h2>進行規則</h2>
+    <ul class="rules">
+      <li><span class="n">1</span>每個 <b>Session</b> 為組別作答 <b>4 分鐘</b>，老師回饋 <b>3 分鐘</b>。</li>
+      <li><span class="n">2</span>訓練總共分為 <b>4 個 Session</b>。</li>
+      <li><span class="n">3</span>每組只有 <b>3 次</b>「AI 建議（生命點數）」的回答上限。</li>
+      <li><span class="n">4</span>每個 Session 開始時，會自動 <b>倒數 4 分鐘</b>。</li>
+    </ul>
+    <div class="note">提示：生命點數是跨全場共用的 3 點。是否動用 AI 建議由小組自行決定，用完即無法再取得 AI 協助。</div>
+    <div class="right" style="margin-top:22px"><button class="btn btn-primary" onclick="go('group')">輸入組別並開始 &rarr;</button></div>
+  </div>`;
+}
+function renderGroup(){
+  $("app").innerHTML = `
+  <div class="card">
+    <div class="eyebrow">START</div><h2>輸入你的組別</h2>
+    <p class="muted" style="margin:6px 0 0">確認後將開始 Session 1，倒數 4 分鐘隨即啟動。</p>
+    <label class="fld"><span class="lab">組別名稱／編號</span><input type="text" id="grp" placeholder="例如：第 3 組" value="${esc(state.group)}" autocomplete="off"></label>
+    <label class="fld"><span class="lab">本組由哪些科別組成？（可複選）</span>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px">
+        ${DEPTS.map(d=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" class="deptchk" value="${esc(d)}" ${state.depts.includes(d)?"checked":""}>${esc(d)}</label>`).join("")}
+      </div>
+    </label>
+    <div class="right" style="margin-top:18px"><button class="btn btn-primary" onclick="startGame()">開始 Session 1 &rarr;</button></div>
+  </div>`;
+  setTimeout(()=>$("grp")&&$("grp").focus(),50);
+}
+const DEPTS = ["內科","外科","婦產","小兒","泌尿","皮膚","麻醉","神外","耳鼻","急診","放腫","影醫","家醫","傳醫","口腔"];
+const SESS = {
+  1:{title:"病史詢問", role:"AI 僅提供「個案相關的病史詢問建議」與推理理由。最終答案由教師提供。"},
+  2:{title:"理學檢查", role:"AI 提供「理學檢查建議、可能鑑別診斷方向與推理理由」。最終答案由教師提供。"},
+  3:{title:"影像 / 抽血檢查", role:"AI 僅提供「影像檢查、抽血檢查的目的，以及該影像的優點分析與抽血檢查的益處」。最終答案由教師提供。"},
+  4:{title:"最終診斷", role:"小組輸入此個案的診斷後，系統將自動針對學員的回答做 AI 分析。"},
+};
+function renderSession(){
+  const s=state.session, cfg=SESS[s], fb=state.phase==="feedback";
+  let inputs="";
+  if(s===1) inputs=field3("q","想詢問的病史");
+  else if(s===2) inputs=field3("pe","想做的理學檢查");
+  else if(s===3) inputs=`<label class="fld"><span class="lab">想安排的 1 個影像學檢查</span><input type="text" id="img1" placeholder="請輸入小組決定安排的影像學檢查"></label>`+field3("b","想安排的抽血檢查");
+  else if(s===4) inputs=`<label class="fld"><span class="lab">該個案的診斷為何</span><textarea id="dx" placeholder="綜合各 Session 後，寫下你們對此個案的診斷"></textarea></label>`;
+  const aiBtn = s===4 ? "" :
+    `<button class="btn btn-vital" id="aiBtn" onclick="useAI()" ${(state.lifePoints<=0||state.aiUsedThisSession[s])?"disabled":""}>&#10084; 使用 AI 建議${state.aiUsedThisSession[s]?"（本 Session 已使用）":` · 消耗 1 點（剩 ${state.lifePoints}）`}</button>`;
+  $("app").innerHTML = `
+  <div class="card">
+    <div class="chart-head"><span class="dot"></span><span class="eyebrow" style="margin:0">經典個案病史 · 累積病歷</span></div>
+    <ul class="timeline">${state.caseRecord.map(e=>`<li class="entry ${e.seed?"seed":""}"><div class="ts">${esc(e.ts)}</div><div class="ti">${esc(e.title)}</div><div class="bd">${esc(e.body)}</div></li>`).join("")}</ul>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div><span class="pill">Session ${s} / 4</span> <h2 style="display:inline;margin-left:8px">${cfg.title}</h2></div>
+      <span class="muted" style="font-family:var(--mono);font-size:12px">${fb?"教師回饋中":"作答中"}</span>
+    </div>
+    <div class="step"><span class="sn">i</span><span class="sx">${cfg.role}</span></div>
+    ${fb ? feedbackBlock() : `
+      ${s===4?"":`<div class="step"><span class="sn">1</span><span class="sx">小組共同討論後，將決定填入下方欄位；可選擇先取得 AI 建議。</span></div>`}
+      ${inputs}
+      <div id="aiBox"></div>
+      <div class="row" style="margin-top:20px;justify-content:space-between">
+        <div>${aiBtn}</div>
+        <button class="btn btn-primary" onclick="submitSession()">${s===4?"送出並生成 AI 分析 &rarr;":"送出本組答案 &rarr;"}</button>
+      </div>
+      <div id="subErr" class="err"></div>`}
+  </div>`;
+  if(!fb && s!==4 && state.aiOutputs[s]) $("aiBox").innerHTML = aiPanel(state.aiOutputs[s]);
+}
+function field3(prefix,label){ return [1,2,3].map(i=>`<label class="fld"><span class="lab">${label} ${i}</span><input type="text" id="${prefix}${i}" autocomplete="off"></label>`).join(""); }
+function aiPanel(text){ return `<div class="aibox"><div class="ah"><span class="led"></span>AI 建議 · 僅供推理參考，非標準答案</div><div class="ab">${esc(text)}</div></div>`; }
+function feedbackBlock(){
+  return `<div class="note" style="background:#e7f0ec">教師回饋時間 · 倒數 <b>3 分鐘</b>。請聆聽教師提供的正確答案與講解（標準答案保存在伺服器後台，不會顯示於此畫面）。</div>
+    <div class="right" style="margin-top:18px"><button class="btn btn-primary" onclick="nextSession()">${state.session<4?"進入下一個 Session &rarr;":"完成訓練，查看總結 &rarr;"}</button></div>`;
+}
+function renderSummary(){
+  $("app").innerHTML = `
+  <div class="card center"><div class="eyebrow">COMPLETE</div><h2>${esc(state.group)} · 訓練完成</h2><p class="muted" style="margin-top:6px">4 個 Session 已全部完成，本組歷程已上傳伺服器。</p></div>
+  <div class="card">
+    <div class="eyebrow">FINAL CHART</div><h3>完整累積病歷</h3>
+    <ul class="timeline" style="margin-top:12px">${state.caseRecord.map(e=>`<li class="entry ${e.seed?"seed":""}"><div class="ts">${esc(e.ts)}</div><div class="ti">${esc(e.title)}</div><div class="bd">${esc(e.body)}</div></li>`).join("")}</ul>
+    <div class="divline"></div>
+    <div class="eyebrow">AI ANALYSIS</div><h3>各 Session 的 AI 分析（針對學員回答）</h3>
+    <div class="bd" style="white-space:pre-wrap;font-size:14px">${esc(state.s4.aiAll||"—")}</div>
+    <div class="right" style="margin-top:10px"><button class="btn btn-ghost btn-sm" onclick="regenAI()">重新生成 AI 分析</button></div>
+    <div class="row" style="margin-top:24px;justify-content:space-between">
+      <button class="btn btn-ghost" onclick="newGroup()">開始新的一組</button>
+      <div class="row"><button class="btn btn-ghost" onclick="downloadOne()">下載本組 PDF</button><button class="btn btn-primary" onclick="toTeacher()">前往教師後台</button></div>
+    </div>
+  </div>`;
+}
+function renderTeacherLogin(){
+  $("app").innerHTML = `
+  <div class="card" style="max-width:420px;margin:40px auto">
+    <div class="eyebrow">TEACHER</div><h2>教師後台</h2>
+    <p class="muted" style="margin:6px 0 0">輸入密碼以管理各 Session 標準答案與下載紀錄。</p>
+    <label class="fld"><span class="lab">密碼</span><input type="text" id="pwd" placeholder="請輸入教師密碼"></label>
+    <div id="pwdErr" class="err"></div>
+    <div class="right" style="margin-top:16px"><button class="btn btn-ghost btn-sm" onclick="go('announcement')">取消</button><button class="btn btn-primary" onclick="teacherLogin()">登入</button></div>
+  </div>`;
+  setTimeout(()=>$("pwd")&&$("pwd").focus(),50);
+}
+function renderTeacher(){
+  const t=state.teacherTab;
+  const titles={1:"Session 1 · 病史詢問",2:"Session 2 · 理學檢查",3:"Session 3 · 影像／抽血",4:"Session 4 · 最終診斷"};
+  $("app").innerHTML = `
+  <div class="card">
+    <div class="eyebrow">TEACHER CONSOLE</div><h2>標準答案管理</h2>
+    <p class="muted" style="margin:6px 0 14px">在此輸入各 Session 的正確答案，內容存於伺服器、<b>不會傳送到學員畫面</b>；回饋時間請由教師口頭講解。</p>
+    <div class="tabs">${[1,2,3,4].map(i=>`<button class="tab ${t===i?"on":""}" onclick="setTab(${i})">Session ${i}</button>`).join("")}</div>
+    <label class="fld"><span class="lab">${titles[t]} · 正確答案 / 教學重點</span><textarea id="ta" style="min-height:180px" placeholder="輸入本 Session 的標準答案與講解要點…">${esc(state.teacherAnswers[t])}</textarea></label>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm" onclick="saveAnswer(${t})">儲存答案</button>
+    </div>
+    <div id="taMsg" class="muted" style="font-size:12px;margin-top:6px"></div>
+    <div class="note" style="margin-top:10px">儲存後即生效，且會一直保留（重開視窗、伺服器重啟都不用重新輸入）。每一組在「進入下一站」時，系統會<b>自動</b>把這一站的答案併入該組的累積病歷（學員可見），<b>不需要每組手動加入</b>。</div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">RECORDS</div><h3>各組歷史紀錄</h3>
+    <p class="muted" style="font-size:13px;margin:6px 0 8px">共 ${allRecords.length} 組已完成。點下載會開啟列印視窗，選「另存為 PDF / Save as PDF」即可存到電腦。</p>
+    ${allRecords.length===0?`<p class="muted">尚無完成紀錄。</p>`:
+      allRecords.map((r,idx)=>`<div class="recitem"><span class="nm">${esc(r.group)}</span><span class="meta">${esc((r.depts&&r.depts.length)?r.depts.join("、"):"")}${(r.depts&&r.depts.length)?"　·　":""}${esc(r.finishedAt)}</span><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="downloadRecord(${idx})">下載 PDF</button></div>`).join("")}
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="reloadRecords()">重新整理</button>
+      <button class="btn btn-ghost" onclick="downloadAll()" ${allRecords.length===0?"disabled":""}>下載全部（合併 PDF）</button>
+    </div>
+  </div>`;
+}
+
+/* ============================ actions ============================ */
+function go(v){ state.view=v; render(); }
+function setTab(i){ state.teacherTab=i; render(); }
+function startGame(){
+  const g=($("grp").value||"").trim();
+  if(!g){ const i=$("grp"); i.style.borderColor="var(--vital)"; i.focus(); return; }
+  state.depts = Array.from(document.querySelectorAll(".deptchk")).filter(c=>c.checked).map(c=>c.value);
+  state.group=g; state.session=1; state.phase="answer"; state.caseRecord=[];
+  addRecord("經典個案病史（初始）", CASE_BASE, true);
+  state.answers={1:null,2:null,3:null,4:null};
+  state.aiOutputs={1:"",2:"",3:""}; state.aiUsedThisSession={1:false,2:false,3:false};
+  state.s4={dx:"",plan:"",aiAll:""}; state.lifePoints=3;
+  state.view="session"; render(); startTimer(ANSWER_SECONDS);
+}
+function startTimer(sec){
+  stopTimer(); remain=sec; if($("clock")) $("clock").textContent=fmt(remain);
+  timer=setInterval(()=>{ remain--; const c=$("clock");
+    if(c){ c.textContent=fmt(Math.max(remain,0)); if(state.phase==="answer"&&remain<=60) c.classList.add("urgent"); }
+    if(remain<=0) stopTimer();
+  },1000);
+}
+function stopTimer(){ if(timer){clearInterval(timer);timer=null;} }
+async function useAI(){
+  const s=state.session;
+  if(state.lifePoints<=0||state.aiUsedThisSession[s]) return;
+  state.lifePoints--; state.aiUsedThisSession[s]=true; renderBar();
+  const btn=$("aiBtn"); if(btn){btn.disabled=true; btn.innerHTML="&#10084; 取得 AI 建議中 <span class='spin'></span>";}
+  $("aiBox").innerHTML = aiPanel("AI 思考中…");
+  const ctx=`目前累積病歷：\n${caseText()}\n\n`; let prompt="";
+  if(s===1) prompt=ctx+"任務：針對本個案，提供 3 個最關鍵且『具體、可直接照著問』的病史詢問建議。每一項都要寫清楚要問什麼、想問出什麼重點與其臨床意義；請寫得具體，避免空泛（範例風格：不要只寫『詢問飲酒史』，而要寫『詢問每日飲酒量與持續年數，以評估酒精性肝病的可能性』）。請勿提供理學檢查、檢驗或最終診斷。\n格式：\n1. 建議詢問：… 目的／臨床意義：…\n2. …\n3. …";
+  if(s===2) prompt=ctx+"任務：提供 3 個最關鍵且『具體』的理學檢查建議。每一項都要寫出要做什麼檢查、要找什麼徵象、以及其臨床意義；請寫得具體，避免空泛（範例風格：不要只寫『腹部觸診』，而要寫『進行腹部觸診，評估是否有肝腫大、壓痛或腹水』）。並條列可能的鑑別診斷方向。請勿斷定最終診斷。";
+  if(s===3) prompt=ctx+"任務：協助小組安排檢查，內容要非常具體、可直接照著安排。對影像學：請直接寫出『具體、可使用的影像學檢查名稱』（例如腹部超音波、腹部電腦斷層、磁振造影膽胰管攝影等適合此個案的項目），並逐項說明該影像的目的、能釐清哪些臨床問題、以及為何適合此個案。對抽血檢查：具體列出建議的檢驗項目，逐項說明能評估什麼及其臨床意義（例如肝功能、膽紅素分項、凝血功能、腫瘤標記等）。請讓每一項建議都具體到學員可直接照著開立。請勿直接給出最終診斷。";
+  try{ const out=await callWithRetry(SYS,prompt); state.aiOutputs[s]=out; $("aiBox").innerHTML=aiPanel(out); }
+  catch(e){ $("aiBox").innerHTML=aiPanel("AI 暫時無法取得建議。\n錯誤訊息："+String((e&&e.message)||e)+"\n\n（若出現 API key not valid，請到 Render 檢查 GEMINI_API_KEY 是否正確、結尾沒有多餘空白或換行）"); }
+  finally{ const b=$("aiBtn"); if(b) b.innerHTML="&#10084; 使用 AI 建議（本 Session 已使用）"; }
+}
+async function submitSession(){
+  const s=state.session; let ok=true, body="";
+  if(s===1){ const v=[1,2,3].map(i=>($("q"+i).value||"").trim()); if(v.filter(Boolean).length<1) ok=false;
+    state.answers[1]={questions:v}; body=v.map((x,i)=>`${i+1}. ${x||"（未填）"}`).join("\n"); if(ok) addRecord("Session 1 · 本組病史詢問",body);
+  }else if(s===2){ const v=[1,2,3].map(i=>($("pe"+i).value||"").trim()); if(v.filter(Boolean).length<1) ok=false;
+    state.answers[2]={exams:v}; body=v.map((x,i)=>`${i+1}. ${x||"（未填）"}`).join("\n"); if(ok) addRecord("Session 2 · 本組理學檢查",body);
+  }else if(s===3){ const img=($("img1").value||"").trim(); const v=[1,2,3].map(i=>($("b"+i).value||"").trim());
+    if(!img && v.filter(Boolean).length<1) ok=false; state.answers[3]={imaging:img,bloods:v};
+    body=`影像學檢查：${img||"（未填）"}\n抽血檢查：\n`+v.map((x,i)=>`  ${i+1}. ${x||"（未填）"}`).join("\n"); if(ok) addRecord("Session 3 · 本組影像／抽血檢查",body);
+  }else if(s===4){ const dx=($("dx").value||"").trim(); if(!dx) ok=false;
+    state.s4.dx=dx; state.s4.plan=""; state.answers[4]={dx,plan:""}; if(ok) addRecord("Session 4 · 本組診斷",`診斷：${dx||"（未填）"}`);
+  }
+  if(!ok){ if($("subErr")) $("subErr").textContent="請至少填寫一項再送出。"; return; }
+  stopTimer();
+  if(s===4) await generateS4();
+  await appendTeacherAnswer(s); // 進入「老師講解（回饋）」階段，就把當站教師答案併入累積病歷
+  if(s===4) saveRecord(); // 學員一按出 AI 分析就立刻自動存檔到伺服器（同組覆蓋）
+  state.phase="feedback"; render(); startTimer(FEEDBACK_SECONDS);
+}
+// 把本組目前完整紀錄（含 AI 分析報告）存到伺服器；同組會覆蓋更新、不重複
+function saveRecord(){
+  const rec={group:state.group||"未命名",depts:state.depts||[],finishedAt:now(),
+    caseRecord:JSON.parse(JSON.stringify(state.caseRecord)),
+    answers:JSON.parse(JSON.stringify(state.answers)),
+    s4:JSON.parse(JSON.stringify(state.s4)), lifeLeft:state.lifePoints};
+  return postJSON("/api/records",{record:rec}).catch(()=>{});
+}
+// 取當站教師後台答案併入累積病歷（防重複）
+async function appendTeacherAnswer(session){
+  const title=`教師補充 · Session ${session} 正確答案`;
+  if(state.caseRecord.some(r=>r.title===title)) return;
+  try{
+    const r=await getJSON("/api/case-answer?session="+session);
+    if(r.ok){ const d=await r.json(); if(d && d.text && d.text.trim()){ addRecord(title, d.text.trim()); } }
+  }catch(e){}
+}
+function studentAnswerText(i){
+  const a=state.answers;
+  if(i===1){ const q=(a[1]&&a[1].questions)||[]; return "學員的病史詢問：\n"+q.map((x,k)=>`${k+1}. ${x||"（未填）"}`).join("\n"); }
+  if(i===2){ const q=(a[2]&&a[2].exams)||[]; return "學員安排的理學檢查：\n"+q.map((x,k)=>`${k+1}. ${x||"（未填）"}`).join("\n"); }
+  if(i===3){ const img=(a[3]&&a[3].imaging)||"（未填）"; const b=(a[3]&&a[3].bloods)||[]; return "學員安排的影像學檢查："+img+"\n學員安排的抽血檢查：\n"+b.map((x,k)=>`${k+1}. ${x||"（未填）"}`).join("\n"); }
+  return "學員的診斷："+(state.s4.dx||"（未填）");
+}
+async function generateS4(){
+  if($("subErr")) $("subErr").innerHTML="正在針對學員回答進行 AI 分析 <span class='spin'></span>";
+  const p=
+    "教學個案背景（僅供你了解情境，不要拿來當作學員的答案，也不要評論此背景或老師的答案）：\n"+CASE_BASE+"\n\n"+
+    "以下是本組『學員實際輸入對話框』的作答內容，請只針對這些學員的回答逐站評析：\n"+
+    "【Session 1 病史詢問】\n"+studentAnswerText(1)+"\n\n"+
+    "【Session 2 理學檢查】\n"+studentAnswerText(2)+"\n\n"+
+    "【Session 3 影像／抽血檢查】\n"+studentAnswerText(3)+"\n\n"+
+    "【Session 4 最終診斷】\n"+studentAnswerText(4)+"\n\n"+
+    "任務：請逐站（Session 1～4）『只』評析學員的回答：是否切題、是否完整、有無遺漏或可補強之處；Session 4 著重學員的診斷是否合理。"+
+    "請勿分析或評論老師的答案，也不要自行另寫一份標準答案，僅針對學員輸入的內容做分析。\n"+
+    "請用以下格式，每段以標題開頭：\n【Session 1】…\n【Session 2】…\n【Session 3】…\n【Session 4】…\n"+
+    "繁體中文、精簡條列。";
+  try{ state.s4.aiAll=await callWithRetry(SYS,p,5); }
+  catch(e){ state.s4.aiAll="（AI 分析暫時無法生成，可能是 AI 服務忙碌或免費額度限制。可在總結頁按「重新生成 AI 分析」再試一次。）"; }
+}
+async function regenAI(){
+  if(state.view!=="summary") return;
+  state.s4.aiAll="AI 分析中…請稍候"; render();
+  await generateS4(); saveRecord(); render();
+}
+async function nextSession(){
+  stopTimer();
+  // 補漏：若老師在回饋階段才存答案、進入回饋時尚未併入，這裡再補一次（防重複）
+  await appendTeacherAnswer(state.session);
+  if(state.session<4){ state.session++; state.phase="answer"; render(); startTimer(ANSWER_SECONDS); }
+  else{
+    saveRecord(); // 更新本組存檔（同組覆蓋）
+    state.view="summary"; render();
+  }
+}
+function newGroup(){ state.view="group"; state.group=""; state.depts=[]; render(); }
+function toTeacher(){ state.view = state.teacherAuthed ? "teacher" : "teacherLogin"; render(); }
+async function toggleMode(){
+  if(state.view==="teacher"||state.view==="teacherLogin"){ state.view="announcement"; render(); return; }
+  if(state.teacherAuthed){ await loadTeacherData(); state.view="teacher"; render(); }
+  else { state.view="teacherLogin"; render(); }
+}
+async function teacherLogin(){
+  const pw=($("pwd").value||"");
+  try{
+    const r=await postJSON("/api/teacher/login",{passcode:pw});
+    if(!r.ok){ $("pwdErr").textContent="密碼不正確。"; return; }
+    const d=await r.json(); teacherToken=d.token; localStorage.setItem("tt",teacherToken);
+    state.teacherAuthed=true; await loadTeacherData(); state.view="teacher"; render();
+  }catch(e){ $("pwdErr").textContent="無法連線伺服器。"; }
+}
+async function loadTeacherData(){
+  // 先用本機快取墊底：即使伺服器暫時掉了，表單也不會變空白
+  try{ const c=JSON.parse(localStorage.getItem("teacherAnswers")||"{}"); state.teacherAnswers=Object.assign({1:"",2:"",3:"",4:""},c); }catch(e){}
+  try{ const a=await getJSON("/api/teacher-answers",true);
+    if(a.status===401){ teacherToken=""; localStorage.removeItem("tt"); state.teacherAuthed=false; return false; }
+    const d=await a.json();
+    if(d.answers){ [1,2,3,4].forEach(i=>{ if(d.answers[i]&&String(d.answers[i]).trim()) state.teacherAnswers[i]=d.answers[i]; }); }
+  }catch(e){}
+  try{ const rr=await getJSON("/api/records",true); const d=await rr.json(); if(Array.isArray(d.records)) allRecords=d.records; }catch(e){}
+  return true;
+}
+async function reloadRecords(){ await loadTeacherData(); render(); }
+async function saveAnswer(i){
+  state.teacherAnswers[i]=($("ta").value||"");
+  try{ localStorage.setItem("teacherAnswers", JSON.stringify(state.teacherAnswers)); }catch(e){}
+  try{ const r=await postJSON("/api/teacher-answers",{session:i,text:state.teacherAnswers[i]},true);
+    if(r.status===401){ $("taMsg").textContent="登入已逾時，請重新登入。"; state.teacherAuthed=false; teacherToken=""; localStorage.removeItem("tt"); return; }
+    $("taMsg").textContent="已儲存 ✓（會一直保留）";
+  }catch(e){ $("taMsg").textContent="已存到本機（伺服器暫時無法連線，稍後會自動以伺服器為準）"; }
+  setTimeout(()=>{const m=$("taMsg"); if(m)m.textContent="";},2000);
+}
+
+/* ============================ PDF ============================ */
+function recordReportHTML(r,includeTeacher){
+  const ans=r.answers||{};
+  const a1=(ans[1]&&ans[1].questions)||[], a2=(ans[2]&&ans[2].exams)||[];
+  const img=(ans[3]&&ans[3].imaging)||"", b=(ans[3]&&ans[3].bloods)||[];
+  const s4=r.s4||{dx:"",plan:"",aiAll:""};
+  const aiBlock = s4.aiAll ? esc(s4.aiAll)
+    : (s4.aiDx ? [1,2,3,4].map(i=>"【Session "+i+"】\n"+esc((s4.aiDx&&s4.aiDx[i])||"—")).join("\n\n") : "—");
+  const li=arr=>arr.map((x,i)=>`<div>${i+1}. ${esc(x||"（未填）")}</div>`).join("");
+  return `
+  <div style="border-bottom:3px solid #dd4f37;padding-bottom:10px;margin-bottom:14px">
+    <div style="font:11px monospace;letter-spacing:.2em;color:#dd4f37">AI 臨床推理模擬訓練 · 紀錄</div>
+    <h1 style="margin:4px 0;font-size:22px;color:#0d3b3f">${esc(r.group)}</h1>
+    ${(r.depts&&r.depts.length)?`<div style="font-size:13px;color:#155b60;margin:2px 0 0">組成科別：${esc(r.depts.join("、"))}</div>`:""}
+    <div style="font:12px monospace;color:#5d6b6b">完成時間 ${esc(r.finishedAt)}　·　剩餘生命點數 ${r.lifeLeft}</div>
+  </div>
+  <h3 style="color:#155b60">完整累積病歷</h3>
+  ${(r.caseRecord||[]).map(e=>`<div style="margin:6px 0 10px;border-left:2px solid #d8d2c2;padding-left:10px"><div style="font:11px monospace;color:#869191">${esc(e.ts)}</div><b>${esc(e.title)}</b><div style="white-space:pre-wrap;font-size:13px">${esc(e.body)}</div></div>`).join("")}
+  <h3 style="color:#155b60;margin-top:16px">本組各 Session 作答</h3>
+  <div style="font-size:13px"><b>Session 1 · 病史詢問</b>${li(a1)}</div>
+  <div style="font-size:13px;margin-top:8px"><b>Session 2 · 理學檢查</b>${li(a2)}</div>
+  <div style="font-size:13px;margin-top:8px"><b>Session 3 · 影像／抽血</b><div>影像：${esc(img||"（未填）")}</div>${li(b)}</div>
+  <div style="font-size:13px;margin-top:8px"><b>Session 4 · 診斷</b><div>診斷：${esc(s4.dx||"（未填）")}</div></div>
+  <h3 style="color:#155b60;margin-top:16px">各 Session 的 AI 分析（針對學員回答）</h3>
+  <div style="font-size:13px;white-space:pre-wrap;margin-top:6px">${aiBlock}</div>
+  ${includeTeacher?`<h3 style="color:#dd4f37;margin-top:16px">教師參考答案（僅教師留存）</h3>${[1,2,3,4].map(i=>`<div style="font-size:13px;margin-top:6px"><b>Session ${i}</b><div style="white-space:pre-wrap">${esc(state.teacherAnswers[i]||"—")}</div></div>`).join("")}`:""}`;
+}
+// 最穩定的 PDF 做法：把報表填入頁內 #printArea，列印時用 @media print 只顯示它，
+// 內容必定在 DOM 中、不會抓到空白；並防呆：沒有內容就不列印。
+function openPrintReport(inner,title){
+  const text=(inner||"").replace(/<[^>]*>/g,"").replace(/\s+/g,"").trim();
+  if(!text){ alert("目前沒有可下載的內容（請確認已完成作答後再下載）。"); return; }
+  const pa=$("printArea");
+  pa.innerHTML='<div class="print-doc">'+inner+'</div>';
+  const prevTitle=document.title;
+  document.title=title; // 影響「另存為 PDF」的預設檔名
+  const cleanup=()=>{ pa.innerHTML=""; document.title=prevTitle; window.removeEventListener("afterprint",cleanup); };
+  window.addEventListener("afterprint",cleanup);
+  setTimeout(()=>{ try{ window.print(); }catch(e){ alert("無法開啟列印視窗："+e); cleanup(); } }, 60);
+}
+function downloadOne(){
+  const r={group:state.group,finishedAt:now(),caseRecord:state.caseRecord,answers:state.answers,s4:state.s4,lifeLeft:state.lifePoints};
+  openPrintReport(recordReportHTML(r,false),`AI臨床訓練_${state.group}`);
+}
+function downloadRecord(i){ const r=allRecords[i]; openPrintReport(recordReportHTML(r,true),`AI臨床訓練_${r.group}`); }
+function downloadAll(){ if(!allRecords.length) return;
+  const inner=allRecords.map((r,i)=>`<div style="${i>0?'page-break-before:always':''}">${recordReportHTML(r,true)}</div>`).join("");
+  openPrintReport(inner,`AI臨床訓練_全部組別`);
+}
+
+/* ============================ init ============================ */
+(function init(){
+  if(teacherToken) state.teacherAuthed=true; // 仍會在進入後台時向伺服器驗證
+  render();
+})();
+</script>
+</body>
+</html>
